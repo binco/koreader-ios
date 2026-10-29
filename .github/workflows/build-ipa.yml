@@ -8,20 +8,25 @@ jobs:
     runs-on: macos-14 # 使用 GitHub 免费的 Apple Silicon macOS 运行环境
 
     steps:
-      - name: Checkout repository (with submodules)
+      - name: Checkout repository (with submodules and tags)
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0
 
-      - name: Setup Homebrew dependencies and GNU Make
+      - name: Setup Homebrew dependencies and GNU toolchain
         run: |
-          brew install autoconf automake libtool pkg-config nasm make
-          # 将新版 GNU Make 路径注入系统环境变量，替换苹果过时的 3.81 版本
+          brew install autoconf automake libtool pkg-config nasm make coreutils gnu-tar gnu-sed wget cmake ninja
+          # 将新版 GNU 工具路径注入系统环境变量
           echo "$(brew --prefix make)/libexec/gnubin" >> $GITHUB_PATH
+          echo "$(brew --prefix coreutils)/libexec/gnubin" >> $GITHUB_PATH
+          echo "$(brew --prefix gnu-tar)/libexec/gnubin" >> $GITHUB_PATH
+          echo "$(brew --prefix gnu-sed)/libexec/gnubin" >> $GITHUB_PATH
 
-      - name: Verify Make version
+      - name: Verify GNU Tools
         run: |
           make --version
+          which gln || which ln
 
       - name: Build macOS base toolchain
         run: |
