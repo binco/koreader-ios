@@ -1,11 +1,11 @@
 name: Build KOReader iOS IPA
 
 on:
-  workflow_dispatch: # 支持手动一键点击运行
+  workflow_dispatch: # 支持手动点击运行
 
 jobs:
   build:
-    runs-on: macos-14 # 使用 GitHub 免费的 Apple Silicon macOS 虚拟环境
+    runs-on: macos-14 # 使用 GitHub 免费的 Apple Silicon macOS 运行环境
 
     steps:
       - name: Checkout repository (with submodules)
@@ -13,9 +13,15 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Setup Homebrew dependencies
+      - name: Setup Homebrew dependencies and GNU Make
         run: |
-          brew install autoconf automake libtool pkg-config nasm
+          brew install autoconf automake libtool pkg-config nasm make
+          # 将新版 GNU Make 路径注入系统环境变量，替换苹果过时的 3.81 版本
+          echo "$(brew --prefix make)/libexec/gnubin" >> $GITHUB_PATH
+
+      - name: Verify Make version
+        run: |
+          make --version
 
       - name: Build macOS base toolchain
         run: |
@@ -39,7 +45,7 @@ jobs:
       - name: Package Payload into IPA
         run: |
           mkdir -p Payload
-          # 寻找构建出来的 KOReader.app 并复制到 Payload 目录
+          # 寻找构建出来的 KOReader.app 并打包
           APP_PATH=$(find build/Release-iphoneos/ -name "*.app" -maxdepth 2 | head -n 1)
           if [ -z "$APP_PATH" ]; then
             APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "KOReader.app" | head -n 1)
