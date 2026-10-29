@@ -16,7 +16,6 @@ jobs:
 
       - name: Select Xcode 16
         run: |
-          # 自动寻找并切换到预装的 Xcode 16
           XCODE_16_PATH=$(find /Applications -maxdepth 1 -name "Xcode_16*.app" | sort -V | tail -n 1)
           if [ -n "$XCODE_16_PATH" ]; then
             echo "Switching to: $XCODE_16_PATH"
@@ -36,12 +35,6 @@ jobs:
           echo "$(brew --prefix gettext)/bin" >> $GITHUB_PATH
           echo "$(brew --prefix gnu-getopt)/bin" >> $GITHUB_PATH
 
-      - name: Verify Tools
-        run: |
-          make --version
-          meson --version
-          xcodegen --version
-
       - name: Build macOS base toolchain
         run: |
           make TARGET=macos base
@@ -49,6 +42,63 @@ jobs:
       - name: Generate Xcode project
         run: |
           make TARGET=ios xcodeproj
+
+      - name: Ensure Info.plist exists
+        run: |
+          mkdir -p platform/ios
+          if [ ! -f "platform/ios/Info.plist" ]; then
+            echo "Generating fallback platform/ios/Info.plist..."
+            cat << 'EOF' > platform/ios/Info.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleDevelopmentRegion</key>
+              <string>en</string>
+              <key>CFBundleDisplayName</key>
+              <string>KOReader</string>
+              <key>CFBundleExecutable</key>
+              <string>KOReader</string>
+              <key>CFBundleIdentifier</key>
+              <string>org.koreader.koreader</string>
+              <key>CFBundleInfoDictionaryVersion</key>
+              <string>6.0</string>
+              <key>CFBundleName</key>
+              <string>KOReader</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleShortVersionString</key>
+              <string>1.0</string>
+              <key>CFBundleVersion</key>
+              <string>1</string>
+              <key>LSRequiresIPhoneOS</key>
+              <true/>
+              <key>UIRequiredDeviceCapabilities</key>
+              <array>
+                  <string>arm64</string>
+              </array>
+              <key>UISupportedInterfaceOrientations</key>
+              <array>
+                  <string>UIInterfaceOrientationPortrait</string>
+                  <string>UIInterfaceOrientationLandscapeLeft</string>
+                  <string>UIInterfaceOrientationLandscapeRight</string>
+                  <string>UIInterfaceOrientationPortraitUpsideDown</string>
+              </array>
+              <key>UISupportedInterfaceOrientations~ipad</key>
+              <array>
+                  <string>UIInterfaceOrientationPortrait</string>
+                  <string>UIInterfaceOrientationPortraitUpsideDown</string>
+                  <string>UIInterfaceOrientationLandscapeLeft</string>
+                  <string>UIInterfaceOrientationLandscapeRight</string>
+              </array>
+              <key>UIViewControllerBasedStatusBarAppearance</key>
+              <false/>
+              <key>UIStatusBarHidden</key>
+              <true/>
+          </dict>
+          </plist>
+          EOF
+          fi
 
       - name: Build iOS App with Xcode
         run: |
@@ -64,10 +114,10 @@ jobs:
       - name: Package Payload into IPA
         run: |
           mkdir -p Payload
-          # 寻找构建出来的 KOReader.app 并打包
-          APP_PATH=$(find build/ -name "*.app" -maxdepth 3 | head -n 1)
+          # 寻找构建出来的 KOReader.app
+          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "KOReader.app" | head -n 1)
           if [ -z "$APP_PATH" ]; then
-            APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "KOReader.app" | head -n 1)
+            APP_PATH=$(find build/ -name "*.app" -maxdepth 4 | head -n 1)
           fi
           echo "Found app at: $APP_PATH"
           cp -r "$APP_PATH" Payload/
